@@ -1,0 +1,102 @@
+#! /usr/bin/python
+
+import re
+import sys 
+import json
+import urllib2
+import argparse
+import subprocess
+
+def get_config(name, default=None):
+    try:
+        return subprocess.check_output(['git', 'config', name]).strip()
+    except subprocess.CalledProcessError:
+        return default
+
+def fail(msg):
+    print >>sys.stderr, msg
+    sys.exit(1)
+
+def get_remote_info(remote):
+    def parse(input):
+        # parse the URL formats github uses
+        mo = re.match(r'git@github.com:([^/]+)/(.+?)(\.git)?$', input)
+        if mo:
+            return mo.group(1), mo.group(2)
+        mo = re.match(r'https://github.com/([^/]+)/(.+?)(\.git)?$', input)
+        if mo:
+            return mo.group(1), mo.group(2)
+
+    # try parsing the remote 'raw' as a URL
+    rv = parse(remote)
+    if rv:
+        return rv
+
+    # otherwise, try looking it up in the config
+    try:
+        url = subprocess.check_output(['git', 'config', 'remote.%s.url' % remote]).strip()
+    except subprocess.CalledProcessError:
+        fail("No URL is configured for remote %r" % (remote,))
+    rv = parse(url)
+    if rv:
+        return rv
+
+    fail("URL %r is not a normal GitHub repository URL" % (url,))
+
+def main():
+    # get config
+    github_token = get_config('issue2pr.token')
+    if not github_token:
+        fail('Set git config issue2pr.token to a GitHub API token')
+    origin = get_config('issue2pr.origin', 'origin')
+    origin_user, _ = get_remote_info(origin)
+    upstream = get_config('issue2pr.upstream', 'upstream')
+    upstream_user, upstream_repo = get_remote_info(upstream)
+
+    # get args
+    parser = argparse.ArgumentParser(description='Convert a GitHub issue to a pull request')
+    parser.add_argument('--issue', '-i', type=int,
+                    help='issue to convert (not needed if branch is named "issue##")')
+    parser.add_argument('--base', default='master',
+                    help='base branch against which to make pull request')
+
+    args = parser.parse_args()
+    issue = args.issue
+    base = args.base
+
+    # get the current branch and extract the issue ID from it
+    branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+    if not issue:
+        mo = re.match(r'issue(\d+)', branch)
+        if not mo:
+            print "Branch name must be 'issue##' if --issue is not specified"
+            sys.exit(1)
+        issue = mo.group(1)
+
+    # based on https://github.com/steveklabnik/issue2pr/blob/master/issue2pr.rb
+    body = json.dumps({
+        "issue": issue,
+        "head": '%s:%s' % (origin_user, branch),
+        "base": base,
+    })
+    uri = "https://api.github.com/repos/%s/%s/pulls?access_token=%s" % (upstream_user, upstream_repo, github_token)
+
+    req = urllib2.Request(uri, data=body, headers={
+        'content-type': 'application/json',
+        'accept': 'application/json',
+    })
+    try:
+        resp = urllib2.urlopen(req)
+    except urllib2.HTTPError as e:
+        if e.code == 422:
+            fail("Unsuccessful (code %d); possibly:\n"
+                 "* issue %s is already a pull request or does not exist\n"
+                 "* branch has not been pushed to origin" % (e.code, issue))
+        fail(str(e))
+    if resp.getcode() != 201:
+        fail("Unsuccessful (code %d)" % (resp.getcode(),))
+    issue_url = "https://github.com/%s/%s/issues/%s" % (upstream_user, upstream_repo, issue)
+    print "Success; see", issue_url
+
+
+main()
