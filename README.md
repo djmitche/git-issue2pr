@@ -4,6 +4,14 @@ git-issue2pr
 A command-line tool to convert GitHub issues into pull requests by supplying code for them.
 This is based on http://issue2pr.herokuapp.com/, but without the need for pointing and clicking.
 
+Installation
+------------
+
+Install `git-issue2pr` somewhere in PATH:
+
+    sudo curl https://raw.githubusercontent.com/djmitche/git-issue2pr/master/git-issue2pr > /usr/bin/git-issue2pr
+    sudo chmod +x /usr/bin/git-issue2pr
+
 Usage
 -----
 
