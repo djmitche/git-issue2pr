@@ -15,8 +15,8 @@ Install `git-issue2pr` somewhere in PATH:
 Usage
 -----
 
-First, create a personal-access token (GitHub -> Settings -> Application TOkens (under "Developer Settings").
-The token does not need any special scopes (don't check any of the boxes).
+First, create a personal-access token (GitHub -> Settings -> Personal access tokens (under "Developer Settings").
+The token only needs `public_repo` - don't check any other boxes.
 
     git config --global issue2pr.token [your token here]
 
@@ -26,6 +26,9 @@ When your work is complete, push to your repo on github, then
     git issue2pr
 
 That's it!
+    
+Once you've converted an issue to a PR, there's nothing more to do -- you can continue
+to push to the branch to update the PR as with any other PR.
 
 ### Repositories
 
