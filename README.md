@@ -15,9 +15,10 @@ Install `git-issue2pr` somewhere in PATH:
 Usage
 -----
 
-First, create a personal-access token (GitHub -> Settings -> Applications)
+First, create a personal-access token (GitHub -> Settings -> Application TOkens (under "Developer Settings").
+The token does not need any special scopes (don't check any of the boxes).
 
-    git config issue2pr.token [your token here]
+    git config --global issue2pr.token [your token here]
 
 Hack away in a topic branch named after the issue, e.g., `issue123` for #123.
 When your work is complete, push to your repo on github, then
